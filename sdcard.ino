@@ -1,0 +1,281 @@
+#include <SPI.h>
+#include <SD.h>
+#include <FS.h>
+#include <TinyGPS++.h>
+#include <math.h>
+#include <SPI.h>
+
+
+#define SD_CS 5
+#define BUTTON_PIN 4 //button
+#define BUZZER_PIN 27 //buzzer
+#define GPS_RX 16 //GPIO 16
+#define GPS_TX 17 //GPIO 17
+#define CS_PIN 5 //ADC
+
+
+File MagnaFile;
+
+
+TinyGPSPlus gps;
+HardwareSerial GPS(2); // enable UART2
+
+
+bool recorded = false;
+
+
+unsigned long lastLog = 0;
+const unsigned long dt = 1000;
+
+
+// Data structure
+struct DataRecord {
+   char dateStr[11];
+    int year;
+    int month;
+    int day;
+   char timeStr[9];
+    int hour;
+    int minute;
+    int second;
+
+
+  double latitude;       // GPS latitude or X coordinate
+  double longitude;      // GPS longitude or Y coordinate
+  double altitude;       // height above sea level or sensor origin
+  float temperature;
+  float depth;
+  float angle;
+  float REALdepth;
+   
+};
+
+
+// create file
+void createMagnaFile() {
+  if (!SD.exists("/magna.csv")) {
+    MagnaFile = SD.open("/magna.csv", FILE_WRITE);
+
+
+    if (!MagnaFile) {
+      Serial.println("Failed to create file");
+      return;
+    }
+    MagnaFile.println("#MagnaFile:");
+    MagnaFile.println("\n");
+    MagnaFile.println("Date,Time,latitude,longitude,altitude,temperature,Measure_Depth,Measure_Angle,Real_depth");
+    MagnaFile.flush();
+  }
+  else {
+    MagnaFile = SD.open("/magna.csv", FILE_APPEND);
+  }
+
+
+}
+
+
+//write record
+void writeRecord(DataRecord d) {
+  if(!MagnaFile) return;
+
+
+  //For recording to scv.
+   MagnaFile.print(d.dateStr);
+   MagnaFile.print(",");
+   MagnaFile.print(d.timeStr);
+   MagnaFile.print(",");
+   MagnaFile.print(d.latitude,6); // GPS latitude or X coordinate in 6decimal
+   MagnaFile.print(",");
+   MagnaFile.print(d.longitude,6); // GPS longitude or Y coordinate in 6decimal
+   MagnaFile.print(",");
+   MagnaFile.print(d.altitude, 3);
+   MagnaFile.print(",");
+   MagnaFile.print(d.temperature);
+   MagnaFile.print(",");
+   MagnaFile.print(d.depth);
+   MagnaFile.print(",");
+   MagnaFile.print(d.angle);
+   MagnaFile.print(",");
+   MagnaFile.print(d.REALdepth);
+   MagnaFile.println("\n");
+
+
+   //For recording to scv.
+   Serial.print(d.dateStr);
+   Serial.print(",");
+   Serial.print(d.timeStr);
+   Serial.print(",");
+   Serial.print(d.latitude,6); // GPS latitude or X coordinate in 6decimal
+   Serial.print(",");
+   Serial.print(d.longitude,6); // GPS longitude or Y coordinate in 6decimal
+   Serial.print(",");
+   Serial.print(d.altitude, 3);
+   Serial.print(",");
+   Serial.print(d.temperature);
+   Serial.print(",");
+   Serial.print(d.depth);
+   Serial.print(",");
+   Serial.print(d.angle);
+   Serial.print(",");
+   Serial.print(d.REALdepth);
+   Serial.println("\n");
+
+
+}
+
+
+//select/deselect ADC
+void selectADC() {
+  digitalWrite(CS_PIN, LOW);
+}
+void deselectADC() {
+  digitalWrite(CS_PIN, HIGH);
+}
+uint16_t readAD7791(){
+  uint16_t value = 0;
+  selectADC();
+  value = SPI.transfer(0x00)<<8;
+  value |= SPI.transfer(0x00);
+  deselectADC();
+  return value;
+}
+float readVoltage() {
+  uint16_t raw = readAD7791();
+  return (raw / 65535.0) * 3.3;
+}
+float readDepth() {
+  float voltage = readVoltage();
+  return (voltage/3.3)*5.0;
+}
+
+
+bool allDataMeasured(DataRecord d) {
+  if (d.latitude == 0 || d.longitude == 0){
+    return false;
+  }
+  if (d.depth <= 0) {
+    return false;
+  }
+  if (d.angle <= 0) {
+    return false;
+  }
+  if (d.altitude == 0){
+    return false;
+  }
+  return true;
+}
+
+
+void setup() {
+  Serial.begin(115200);
+  GPS.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX); //seting GPS
+
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP); //button setting
+  pinMode(BUZZER_PIN, OUTPUT); //buzzer setting
+
+
+  SPI.begin(18, 19, 23); //AD7791 setup clock,MISO,MOSI
+  pinMode(CS_PIN, OUTPUT);
+  digitalWrite(CS_PIN, HIGH);
+ 
+  //read and SDcard
+  SPI.begin();
+  if (!SD.begin(SD_CS)){
+    Serial.println("No SD card attached.");
+    return;
+  }
+  Serial.println("SD card is loaded.");
+
+
+  uint8_t cardType = SD.cardType();
+  if(cardType == CARD_NONE){
+    Serial.println("Card Failed.");
+    return;
+  }
+ 
+  Serial.print("SD Card Type: ");
+  if (cardType == CARD_MMC) {
+    Serial.println("MMC");
+  } else if (cardType == CARD_SD) {
+    Serial.println("SDSC");
+  } else if (cardType == CARD_SDHC) {
+    Serial.println("SDHC");
+  } else {
+    Serial.println("UNKNOWN");
+  }
+
+
+  createMagnaFile();
+}
+
+
+void loop() {
+ while(GPS.available() > 0) {
+  gps.encode(GPS.read());
+ }
+
+
+ if (!recorded && digitalRead(BUTTON_PIN) == LOW) {
+    digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+    delay(100);
+
+
+    if (millis() - lastLog >= dt){
+     lastLog = millis();
+     digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+     delay(100);
+     
+     DataRecord data;
+     
+     if(gps.time.isValid() && gps.date.isValid()) {
+       data.year = gps.date.year();
+       data.month = gps.date.month();
+       data.day = gps.date.day();
+
+
+       data.hour = gps.time.hour();
+       data.minute = gps.time.minute();
+       data.second = gps.time.second();
+
+
+       sprintf(data.dateStr, "%02d/%02d/%04d", data.month, data.day, data.year);
+       sprintf(data.timeStr, "%02d:%02d.%02d", data.hour, data.minute, data.second);
+      }
+     
+      if (gps.location.isValid()) {
+       data.latitude = gps.location.lat();
+       data.longitude = gps.location.lng();
+      }
+     
+      if (gps.altitude.isValid()) {
+       data.altitude = gps.altitude.meters();
+      }
+   
+      data.depth = readDepth();
+     
+      // need to replace to the actual measurement
+      data.temperature = random(10,50)/10.0;
+      data.angle = random(10,50)/10.0;
+
+
+      data.REALdepth = data.depth*cos(data.angle);
+     
+     if (!recorded && allDataMeasured(data) && digitalRead(BUTTON_PIN) == LOW){
+      writeRecord(data);
+      recorded = true;
+      digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
+      delay(100);
+     }
+   }
+  }
+  else {
+    digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
+    delay(100);
+  }
+
+
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    recorded = false;
+ }
+}
