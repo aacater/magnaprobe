@@ -1,5 +1,5 @@
 #include <SPI.h>
-
+#include "AD7791.h"
 
 #define CS_PIN   4  
 #define SCK_PIN  18  
