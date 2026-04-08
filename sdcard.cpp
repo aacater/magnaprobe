@@ -1,10 +1,13 @@
+/*
+  sdcard.cpp
+*/
+
 #include <SPI.h>
 #include <SD.h>
 #include <FS.h>
 #include <TinyGPS++.h>
 #include <math.h>
 #include <SPI.h>
-
 
 #define SD_CS 5
 #define BUTTON_PIN 4 //button
@@ -13,33 +16,26 @@
 #define GPS_TX 17 //GPIO 17
 #define CS_PIN 5 //ADC
 
-
 File MagnaFile;
-
 
 TinyGPSPlus gps;
 HardwareSerial GPS(2); // enable UART2
 
-
 bool recorded = false;
-
 
 unsigned long lastLog = 0;
 const unsigned long dt = 1000;
 
-
 // Data structure
 struct DataRecord {
-   char dateStr[11];
-    int year;
-    int month;
-    int day;
-   char timeStr[9];
-    int hour;
-    int minute;
-    int second;
-
-
+  char dateStr[11];
+  int year;
+  int month;
+  int day;
+  char timeStr[9];
+  int hour;
+  int minute;
+  int second;
   double latitude;       // GPS latitude or X coordinate
   double longitude;      // GPS longitude or Y coordinate
   double altitude;       // height above sea level or sensor origin
@@ -47,7 +43,6 @@ struct DataRecord {
   float depth;
   float angle;
   float REALdepth;
-   
 };
 
 
@@ -55,7 +50,6 @@ struct DataRecord {
 void createMagnaFile() {
   if (!SD.exists("/magna.csv")) {
     MagnaFile = SD.open("/magna.csv", FILE_WRITE);
-
 
     if (!MagnaFile) {
       Serial.println("Failed to create file");
@@ -65,19 +59,15 @@ void createMagnaFile() {
     MagnaFile.println("\n");
     MagnaFile.println("Date,Time,latitude,longitude,altitude,temperature,Measure_Depth,Measure_Angle,Real_depth");
     MagnaFile.flush();
-  }
-  else {
+  } else {
     MagnaFile = SD.open("/magna.csv", FILE_APPEND);
   }
-
-
 }
 
 
 //write record
 void writeRecord(DataRecord d) {
   if(!MagnaFile) return;
-
 
   //For recording to scv.
    MagnaFile.print(d.dateStr);
@@ -99,7 +89,6 @@ void writeRecord(DataRecord d) {
    MagnaFile.print(d.REALdepth);
    MagnaFile.println("\n");
 
-
    //For recording to scv.
    Serial.print(d.dateStr);
    Serial.print(",");
@@ -119,18 +108,17 @@ void writeRecord(DataRecord d) {
    Serial.print(",");
    Serial.print(d.REALdepth);
    Serial.println("\n");
-
-
 }
 
-
-//select/deselect ADC
+// select/deselect ADC
 void selectADC() {
   digitalWrite(CS_PIN, LOW);
 }
+
 void deselectADC() {
   digitalWrite(CS_PIN, HIGH);
 }
+
 uint16_t readAD7791(){
   uint16_t value = 0;
   selectADC();
@@ -139,10 +127,12 @@ uint16_t readAD7791(){
   deselectADC();
   return value;
 }
+
 float readVoltage() {
   uint16_t raw = readAD7791();
   return (raw / 65535.0) * 3.3;
 }
+
 float readDepth() {
   float voltage = readVoltage();
   return (voltage/3.3)*5.0;
@@ -167,13 +157,10 @@ bool allDataMeasured(DataRecord d) {
 
 
 void setup() {
-  Serial.begin(115200);
   GPS.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX); //seting GPS
-
 
   pinMode(BUTTON_PIN, INPUT_PULLUP); //button setting
   pinMode(BUZZER_PIN, OUTPUT); //buzzer setting
-
 
   SPI.begin(18, 19, 23); //AD7791 setup clock,MISO,MOSI
   pinMode(CS_PIN, OUTPUT);
@@ -181,15 +168,14 @@ void setup() {
  
   //read and SDcard
   SPI.begin();
-  if (!SD.begin(SD_CS)){
+  if (!SD.begin(SD_CS)) {
     Serial.println("No SD card attached.");
     return;
   }
   Serial.println("SD card is loaded.");
 
-
   uint8_t cardType = SD.cardType();
-  if(cardType == CARD_NONE){
+  if(cardType == CARD_NONE) {
     Serial.println("Card Failed.");
     return;
   }
@@ -205,51 +191,46 @@ void setup() {
     Serial.println("UNKNOWN");
   }
 
-
   createMagnaFile();
 }
 
 
 void loop() {
- while(GPS.available() > 0) {
-  gps.encode(GPS.read());
- }
-
+  while(GPS.available() > 0) {
+    gps.encode(GPS.read());
+  }
 
  if (!recorded && digitalRead(BUTTON_PIN) == LOW) {
     digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
     delay(100);
 
-
-    if (millis() - lastLog >= dt){
-     lastLog = millis();
-     digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
-     delay(100);
-     
-     DataRecord data;
+    if (millis() - lastLog >= dt) {
+      lastLog = millis();
+      digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+      delay(100);
+      
+      DataRecord data;
      
      if(gps.time.isValid() && gps.date.isValid()) {
-       data.year = gps.date.year();
-       data.month = gps.date.month();
-       data.day = gps.date.day();
+        data.year = gps.date.year();
+        data.month = gps.date.month();
+        data.day = gps.date.day();
 
+        data.hour = gps.time.hour();
+        data.minute = gps.time.minute();
+        data.second = gps.time.second();
 
-       data.hour = gps.time.hour();
-       data.minute = gps.time.minute();
-       data.second = gps.time.second();
-
-
-       sprintf(data.dateStr, "%02d/%02d/%04d", data.month, data.day, data.year);
-       sprintf(data.timeStr, "%02d:%02d.%02d", data.hour, data.minute, data.second);
+        sprintf(data.dateStr, "%02d/%02d/%04d", data.month, data.day, data.year);
+        sprintf(data.timeStr, "%02d:%02d.%02d", data.hour, data.minute, data.second);
       }
      
       if (gps.location.isValid()) {
-       data.latitude = gps.location.lat();
-       data.longitude = gps.location.lng();
+        data.latitude = gps.location.lat();
+        data.longitude = gps.location.lng();
       }
      
       if (gps.altitude.isValid()) {
-       data.altitude = gps.altitude.meters();
+        data.altitude = gps.altitude.meters();
       }
    
       data.depth = readDepth();
@@ -257,7 +238,6 @@ void loop() {
       // need to replace to the actual measurement
       data.temperature = random(10,50)/10.0;
       data.angle = random(10,50)/10.0;
-
 
       data.REALdepth = data.depth*cos(data.angle);
      
@@ -268,8 +248,7 @@ void loop() {
       delay(100);
      }
    }
-  }
-  else {
+  } else {
     digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
     delay(100);
   }
@@ -277,5 +256,5 @@ void loop() {
 
   if (digitalRead(BUTTON_PIN) == HIGH) {
     recorded = false;
- }
+  }
 }

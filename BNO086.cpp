@@ -1,66 +1,33 @@
 /*
-  Hardware Connections:
-  IoT RedBoard --> BNO08x
-  QWIIC --> QWIIC
-  A4  --> INT
-  A5  --> RST
-
-  BNO08x "mode" jumpers set for I2C (default):
-  PSO: OPEN
-  PS1: OPEN
+  BNO086.cpp
 */
 
-#include <Wire.h>
-
-// http://librarymanager/All#SparkFun_BNO08x
-#include "SparkFun_BNO08x_Arduino_Library.h"
-
-BNO08x imu;
-
-// For the most reliable interaction with the SHTP bus, we need
-// to use hardware reset control, and to monitor the H_INT pin.
-// The H_INT pin will go low when its okay to talk on the SHTP bus.
-// Note, these can be other GPIO if you like.
-// Define as -1 to disable these features.
-//#define BNO08X_INT  A4
-#define BNO08X_INT  -1
-//#define BNO08X_RST  A5
-#define BNO08X_RST  -1
-
-#define BNO08X_ADDR 0x4B
-
-void setup() {
-  Serial.begin(115200);
-  
-  Serial.println();
-  Serial.println("BNO08x Read Example");
-
-  Wire.begin();
-
+void setupIMU(void) {
   //if (imu.begin() == false) {  // Setup without INT/RST control (Not Recommended)
-  if (imu.begin(BNO08X_ADDR, Wire, BNO08X_INT, BNO08X_RST) == false) {
-    Serial.println("BNO08x not detected at default I2C address. Check your jumpers and the hookup guide. Freezing...");
-    while (1)
-      ;
+  if (imu.begin(BNO08X_ADDR, Wire, BNO08X_INT, BNO08X_RST)) {
+    Serial.println("BNO08x found!");
+  } else {
+    Serial.println("BNO08x not detected at default I2C address.");
   }
-  Serial.println("BNO08x found!");
-
+  
   Wire.setClock(400000); //Increase I2C data rate to 400kHz
 
-  setReports();
+  setIMUReports();
 
   Serial.println("Reading events");
   delay(100);
 }
 
-void setReports(void) {
-  Serial.println("Setting desired reports");
+void enableMagnetometer(void) {
   if (imu.enableMagnetometer()) {
-    Serial.println(F("Magnetometer enabled"));
+    Serial.println(F("Magnetometer enabled."));
     Serial.println(F("Output in form x, y, z, in uTesla"));
   } else {
-    Serial.println("Could not enable magnetometer");
+    Serial.print("Could not enable magnetometer reporting." + BNO08X_ADDR);
   }
+}
+
+void enableGyro(void) {
   if (imu.enableGyroIntegratedRotationVector()) {
     Serial.println(F("Gryo Integrated Rotation vector enabled"));
     Serial.println(F("Output in form i, j, k, real, gyroX, gyroY, gyroZ"));
@@ -69,12 +36,17 @@ void setReports(void) {
   }
 }
 
-void loop() {
+void setIMUReports(void) {
+  enableMagnetometer();
+  enableGyro();
+}
+
+void getIMUData() {
   delay(10);
 
   if (imu.wasReset()) {
     Serial.print("sensor was reset ");
-    setReports();
+    setIMUReports();
   }
 
   if (imu.getSensorEvent()) {
