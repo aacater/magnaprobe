@@ -56,9 +56,10 @@ void createMagnaFile() {
       return;
     }
     MagnaFile.println("#MagnaFile:");
-    MagnaFile.println("\n");
+    MagnaFile.print("\n");
     MagnaFile.println("Date,Time,latitude,longitude,altitude,temperature,Measure_Depth,Measure_Angle,Real_depth");
     MagnaFile.flush();
+    MagnaFile.close();
   } else {
     MagnaFile = SD.open("/magna.csv", FILE_APPEND);
   }
@@ -86,8 +87,7 @@ void writeRecord(DataRecord d) {
    MagnaFile.print(",");
    MagnaFile.print(d.angle);
    MagnaFile.print(",");
-   MagnaFile.print(d.REALdepth);
-   MagnaFile.println("\n");
+   MagnaFile.println(d.REALdepth);
 
    //For recording to scv.
    Serial.print(d.dateStr);
@@ -106,8 +106,10 @@ void writeRecord(DataRecord d) {
    Serial.print(",");
    Serial.print(d.angle);
    Serial.print(",");
-   Serial.print(d.REALdepth);
-   Serial.println("\n");
+   Serial.println(d.REALdepth);
+
+   MagnaFile.flush();
+   MagnaFile.close();
 }
 
 // select/deselect ADC
