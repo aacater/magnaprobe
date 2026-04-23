@@ -1,0 +1,97 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include "AD7791.h"
+
+// --- Pin Definitions ---
+#undef AD7791_SS
+#define AD7791_SS    4    // CS  → ESP32 GPIO 4
+#define DRDY_PIN     19   // DOUT/RDY → ESP32 GPIO 19
+
+// --- Sensor Constants ---
+#define V_REF         3.3     // REFIN(+) = 3.3V
+#define R1            78000.0 // Two 39kΩ in series
+#define R2            39000.0 // One 39kΩ
+#define DIVIDER_RATIO ((R1 + R2) / R2)  // = 3.0
+
+// --- Two-Point Calibration ---
+#define V_SURFACE     7.7747  // Voltage at snow surface
+#define V_BOTTOM      0.0     // Voltage at full depth
+#define STROKE_MM     1200.0  // GHZ1200
+
+// --- AD7791 Register Config ---
+#define MODE_CONFIG   0x06  // Unipolar, Buffered, Continuous
+#define FILTER_CONFIG 0x04  // 16.6Hz, best 50/60Hz rejection
+
+// -------------------------------------------------------
+
+float rawToDepth(uint32_t raw) {
+    // Step 1: Convert raw counts to ADC voltage
+    float v_adc = ((float)raw / 16777216.0) * V_REF;
+    
+    // Step 2: Undo voltage divider to get actual sensor voltage
+    float v_sensor = v_adc * DIVIDER_RATIO;
+    
+    // Step 3: Convert sensor voltage to snow depth
+    // V1 output is inverted: high voltage = surface, low = deep
+    float depth = ((V_SURFACE - v_sensor) / (V_SURFACE - V_BOTTOM)) * STROKE_MM;
+    
+    // Step 4: Clamp to valid range
+    if (depth < 0)          depth = 0;
+    if (depth > STROKE_MM)  depth = STROKE_MM;
+    
+    return depth;
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    pinMode(AD7791_SS, OUTPUT);
+    pinMode(DRDY_PIN, INPUT);
+    digitalWrite(AD7791_SS, HIGH);
+
+    // ESP32 SPI pins: SCK=18, MISO=19, MOSI=23, SS=4
+    SPI.begin(18, 19, 23, 4);
+    AD7791.AD7791_SPI_Configuration();
+
+    // Reset AD7791
+    AD7791.writeAd7791(RESET, 0xFF);
+    delay(10);
+
+    // Configure Mode Register
+    AD7791.writeAd7791(MODE_WRITE, MODE_CONFIG);
+    delay(1);
+
+    // Configure Filter Register
+    AD7791.writeAd7791(FILTER_WRITE, FILTER_CONFIG);
+    delay(1);
+
+    // Verify registers on startup
+    uint32_t modeCheck   = AD7791.readAd7791(MODE_READ);
+    uint32_t filterCheck = AD7791.readAd7791(FILTER_READ);
+    uint32_t statusCheck = AD7791.readAd7791(STATUS_READ);
+
+    Serial.println("=== Magnaprobe Boot ===");
+    Serial.print("Mode   (expect 0x06): 0x"); Serial.println(modeCheck,   HEX);
+    Serial.print("Filter (expect 0x04): 0x"); Serial.println(filterCheck, HEX);
+    Serial.print("Status (expect 0x8C): 0x"); Serial.println(statusCheck, HEX);
+    Serial.println("=======================");
+}
+
+void loop() {
+    // Wait for conversion complete
+    while (digitalRead(DRDY_PIN) == HIGH);
+
+    // Read raw ADC value
+    uint32_t raw = AD7791.readAd7791(DATA_READ);
+
+    // Calculate voltages and depth
+    float v_adc    = ((float)raw / 16777216.0) * V_REF;
+    float v_sensor = v_adc * DIVIDER_RATIO;
+    float depth    = rawToDepth(raw);
+
+    // Output to serial
+    Serial.print("Raw: ");         Serial.print(raw);
+    Serial.print(" | V_ADC: ");    Serial.print(v_adc,    4); Serial.print("V");
+    Serial.print(" | V_Sensor: "); Serial.print(v_sensor, 4); Serial.print("V");
+    Serial.print(" | Depth: ");    Serial.print(depth,    1); Serial.println(" mm");
+}
