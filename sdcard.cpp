@@ -40,7 +40,7 @@ struct DataRecord {
   double longitude;      // GPS longitude or Y coordinate
   double altitude;       // height above sea level or sensor origin
   float temperature;
-  float depth;
+  float readdepth;
   float angle;
   float REALdepth;
 };
@@ -235,7 +235,7 @@ void loop() {
         data.altitude = gps.altitude.meters();
       }
    
-      data.depth = readDepth();
+      data.readdepth = readDepth();
      
       // need to replace to the actual measurement
       data.temperature = random(10,50)/10.0;
