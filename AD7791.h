@@ -23,7 +23,7 @@
 #define RESET				    0xFF					// Resets the chip to default
 
 //Pins
-#define AD7791_SS				8					// AD7791 SPI chip select
+#define AD7791_SS				4				// AD7791 SPI chip select
 
 class AD7791class {
   public:
