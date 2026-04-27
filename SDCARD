@@ -56,7 +56,6 @@ void createMagnaFile() {
   if (!SD.exists("/magna.csv")) {
     MagnaFile = SD.open("/magna.csv", FILE_WRITE);
 
-
     if (!MagnaFile) {
       Serial.println("Failed to create file");
       return;
@@ -70,15 +69,11 @@ void createMagnaFile() {
   else {
     MagnaFile = SD.open("/magna.csv", FILE_APPEND);
   }
-
-
 }
-
 
 //write record
 void writeRecord(DataRecord d) {
   if(!MagnaFile) return;
-
 
   //For recording to scv.
    MagnaFile.print(d.dateStr);
@@ -190,13 +185,11 @@ void setup() {
   }
   Serial.println("SD card is loaded.");
 
-
   uint8_t cardType = SD.cardType();
   if(cardType == CARD_NONE){
     Serial.println("Card Failed.");
     return;
   }
- 
   Serial.print("SD Card Type: ");
   if (cardType == CARD_MMC) {
     Serial.println("MMC");
@@ -207,8 +200,6 @@ void setup() {
   } else {
     Serial.println("UNKNOWN");
   }
-
-
   createMagnaFile();
 }
 
