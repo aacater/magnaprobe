@@ -17,6 +17,8 @@ void MagnaSD::SDset() {
     Serial.println("No SD card attached.");
     
     digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+    delay(600);
+    digitalWrite(BUZZER_PIN, LOW);
     delay(500);
   }
 
@@ -44,6 +46,10 @@ void MagnaSD::writeRecord(DataRecord d) {
 
     if (!MagnaFile) {
       Serial.println("Failed to create file");
+      digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+      delay(600);
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(500);
       return;
     }
     
@@ -53,6 +59,8 @@ void MagnaSD::writeRecord(DataRecord d) {
       MagnaFile.println("Date,Time,latitude,longitude,altitude,temperature,Measure_Depth,Measure_Angle,Real_depth");
       MagnaFile.flush();
     }
+
+    if (!MagnaFile) return;
     
   //For recording to scv.
    MagnaFile.print(d.dateStr);
@@ -118,14 +126,14 @@ void MagnaSD::record() {
   gps.encode(GPS.read());
  }
 
- //if (!recorded && digitalRead(BUTTON_PIN) == LOW) {
-    digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
-    delay(1000);
+ if (!recorded && digitalRead(BUTTON_PIN) == LOW) {
+    /*digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+    delay(1000);*/
 
     if (millis() - lastLog >= dt){
      lastLog = millis();
-     digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
-     delay(100);
+     //digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
+     //delay(100);
      
      DataRecord data;
      
@@ -163,7 +171,7 @@ void MagnaSD::record() {
       }
 
       //data.depth = readDepth();
-      data.depth = millis();
+      data.depth = AD7791.rawToDepth(raw);
       
       // need to replace to the actual measurement
       data.temperature = -40;
@@ -171,21 +179,21 @@ void MagnaSD::record() {
 
       data.REALdepth = data.depth*cos(data.angle);
      
-     //if (!recorded && allDataMeasured(data) && digitalRead(BUTTON_PIN) == LOW){
+     if (!recorded && /*allDataMeasured(data) &&*/ digitalRead(BUTTON_PIN) == LOW){
       writeRecord(data);
       recorded = true; 
       digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
       delay(100);
-     //} 
-   }
-  //}
-  /*else {
+    } 
+  }
+ }
+  else {
     digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
     delay(100);
   }
 
   if (digitalRead(BUTTON_PIN) == HIGH) {
     recorded = false;
-  }*/
+  }
     
 }
