@@ -2,6 +2,10 @@
   BNO086.cpp
 */
 
+#include "BNO086.h"
+
+BNO08x imu;
+
 void setupIMU(void) {
   //if (imu.begin() == false) {  // Setup without INT/RST control (Not Recommended)
   if (imu.begin(BNO08X_ADDR, Wire, BNO08X_INT, BNO08X_RST)) {
@@ -23,7 +27,8 @@ void enableMagnetometer(void) {
     Serial.println(F("Magnetometer enabled."));
     Serial.println(F("Output in form x, y, z, in uTesla"));
   } else {
-    Serial.print("Could not enable magnetometer reporting." + BNO08X_ADDR);
+    Serial.print("Could not enable magnetometer reporting at ");
+    Serial.println(BNO08X_ADDR, HEX);
   }
 }
 
@@ -36,9 +41,19 @@ void enableGyro(void) {
   }
 }
 
+void enableGeomagneticRotationVector(void) {
+  if (imu.enableGeomagneticRotationVector()) {
+    Serial.println(F("Gryo Integrated Rotation vector enabled"));
+    Serial.println(F("Output in form i, j, k, real, gyroX, gyroY, gyroZ"));
+  } else {
+    Serial.println("Could not enable gyro integrated rotation vector");
+  }
+}
+
 void setIMUReports(void) {
-  enableMagnetometer();
-  enableGyro();
+  // enableMagnetometer();
+  // enableGyro();
+  enableGeomagneticRotationVector();
 }
 
 void getIMUData() {
@@ -50,49 +65,66 @@ void getIMUData() {
   }
 
   if (imu.getSensorEvent()) {
+    switch(imu.getSensorEventID()) {
+      case SENSOR_REPORTID_MAGNETIC_FIELD: {
+        float x = imu.getMagX();
+        float y = imu.getMagY();
+        float z = imu.getMagZ();
+        byte accuracy = imu.getMagAccuracy();
 
-    if (imu.getSensorEventID() == SENSOR_REPORTID_MAGNETIC_FIELD) {
+        Serial.print(x, 2);
+        Serial.print(F(","));
+        Serial.print(y, 2);
+        Serial.print(F(","));
+        Serial.print(z, 2);
+        Serial.print(F(","));
+        Serial.print(accuracy, 2);
 
-      float x = imu.getMagX();
-      float y = imu.getMagY();
-      float z = imu.getMagZ();
-      byte accuracy = imu.getMagAccuracy();
+        Serial.println();
+        break;
+      }
 
-      Serial.print(x, 2);
-      Serial.print(F(","));
-      Serial.print(y, 2);
-      Serial.print(F(","));
-      Serial.print(z, 2);
-      Serial.print(F(","));
-      Serial.print(accuracy, 2);
+      case SENSOR_REPORTID_GYRO_INTEGRATED_ROTATION_VECTOR: {
+        float RVI = imu.getGyroIntegratedRVI();
+        float RVJ = imu.getGyroIntegratedRVJ();
+        float RVK = imu.getGyroIntegratedRVK();
+        float RVReal = imu.getGyroIntegratedRVReal();
+        float gyroX = imu.getGyroIntegratedRVangVelX();
+        float gyroY = imu.getGyroIntegratedRVangVelY();
+        float gyroZ = imu.getGyroIntegratedRVangVelZ();
 
-      Serial.println();
-    }
-    else if (imu.getSensorEventID() == SENSOR_REPORTID_GYRO_INTEGRATED_ROTATION_VECTOR) {
+        Serial.print(RVI, 2);
+        Serial.print(F(","));
+        Serial.print(RVJ, 2);
+        Serial.print(F(","));
+        Serial.print(RVK, 2);
+        Serial.print(F(","));
+        Serial.print(RVReal, 2);
+        Serial.print(F(","));
+        Serial.print(gyroX, 2);
+        Serial.print(F(","));
+        Serial.print(gyroY, 2);
+        Serial.print(F(","));
+        Serial.print(gyroZ, 2);
 
-    float RVI = imu.getGyroIntegratedRVI();
-    float RVJ = imu.getGyroIntegratedRVJ();
-    float RVK = imu.getGyroIntegratedRVK();
-    float RVReal = imu.getGyroIntegratedRVReal();
-    float gyroX = imu.getGyroIntegratedRVangVelX();
-    float gyroY = imu.getGyroIntegratedRVangVelY();
-    float gyroZ = imu.getGyroIntegratedRVangVelZ();
+        Serial.println();
+        break;
+      }
 
-    Serial.print(RVI, 2);
-    Serial.print(F(","));
-    Serial.print(RVJ, 2);
-    Serial.print(F(","));
-    Serial.print(RVK, 2);
-    Serial.print(F(","));
-    Serial.print(RVReal, 2);
-    Serial.print(F(","));
-    Serial.print(gyroX, 2);
-    Serial.print(F(","));
-    Serial.print(gyroY, 2);
-    Serial.print(F(","));
-    Serial.print(gyroZ, 2);
+      case SENSOR_REPORTID_GEOMAGNETIC_ROTATION_VECTOR: {
+        float roll = (imu.getRoll()) * 180.0 / PI; // Convert roll to degrees
+        float pitch = (imu.getPitch()) * 180.0 / PI; // Convert pitch to degrees
+        float yaw = (imu.getYaw()) * 180.0 / PI; // Convert yaw / heading to degrees
 
-    Serial.println();
+        Serial.print(roll, 1);
+        Serial.print(F(","));
+        Serial.print(pitch, 1);
+        Serial.print(F(","));
+        Serial.print(yaw, 1);
+
+        Serial.println();
+        break;
+      }
     }
   }
 }

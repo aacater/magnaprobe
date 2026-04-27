@@ -40,6 +40,7 @@ extern BNO08x imu;
 void setupIMU(void);
 void enableMagnetometer(void);
 void enableGyro(void);
+void enableGeomagneticRotationVector(void);
 void setIMUReports(void);
 void getIMUData(void);
 

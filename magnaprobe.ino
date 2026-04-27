@@ -1,10 +1,9 @@
 /*
-  magnaprobe.h
+  magnaprobe.ino
 */
 
-// #include "sdcard.ino"
-#include "BNO086.ino"
-#include "ADC.ino"
+#include "BNO086.h"
+#include "ADC.h"
 #include "sdcard.h"
 
 MagnaSD sd;
@@ -19,5 +18,6 @@ void setup(void) {
 }
 
 void loop(void) {
+  getIMUData();
   sd.record();
 }
