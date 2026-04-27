@@ -33,7 +33,7 @@ float rawToDepth(uint32_t raw) {
     
     // Step 3: Convert sensor voltage to snow depth
     // V1 output is inverted: high voltage = surface, low = deep
-    float depth = ((V_SURFACE - v_sensor) / (V_SURFACE - V_BOTTOM)) * STROKE_MM;
+    float depth = ((v_sensor - V_BOTTOM) / (V_SURFACE - V_BOTTOM)) * STROKE_MM;
     
     // Step 4: Clamp to valid range
     if (depth < 0)          depth = 0;
