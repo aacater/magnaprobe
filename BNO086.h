@@ -1,5 +1,6 @@
 /*
   BNO086.h
+  by Alex Cater
 */
 
 /*

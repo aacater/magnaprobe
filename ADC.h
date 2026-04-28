@@ -1,5 +1,6 @@
 /*
   ADC.h
+  by Griffin Marson
 */
 
 #ifndef ADC_h

@@ -1,5 +1,7 @@
 /*
   BNO086.cpp
+  by Alex Cater
+  Based on work by Nathan Seidle
 */
 
 #include "BNO086.h"

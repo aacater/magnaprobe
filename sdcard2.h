@@ -1,3 +1,8 @@
+/*
+  sdcard2.h
+  by Ryuma Map
+*/
+
 #include "sdcard.h"
 #include <math.h>
 

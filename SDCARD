@@ -1,3 +1,8 @@
+/*
+  SDCARD
+  by Ryuma Map
+*/
+
 #include <SPI.h>
 #include <SD.h>
 #include <FS.h>

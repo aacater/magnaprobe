@@ -1,5 +1,6 @@
 /*
   magnaprobe.ino
+  by Alex Cater, Griffin Marson, Ryuma May
 */
 
 #include "BNO086.h"

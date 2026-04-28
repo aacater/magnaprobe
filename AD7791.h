@@ -1,5 +1,6 @@
 /*
   AD7791.h
+  Source: https://github.com/analogdevicesinc/arduino/blob/d5946b9d890ca4319f12887ea6cef78a6a872af7/Arduino%20Uno%20R3/examples/CN0216_example/AD7791.h
 */
 #ifndef AD7791_h
 #define AD7791_h

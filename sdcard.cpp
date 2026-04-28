@@ -1,5 +1,6 @@
 /*
   sdcard.cpp
+  by Ryuma May
 */
 
 #include "sdcard.h"

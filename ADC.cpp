@@ -1,5 +1,6 @@
 /*
   ADC.cpp
+  by Griffin Marson
 */
 
 void setupADC(void) {
