@@ -3,6 +3,8 @@
   by Griffin Marson
 */
 
+#include "ADC.h"
+
 void setupADC(void) {
   pinMode(ADC_CS_PIN, OUTPUT);
   digitalWrite(ADC_CS_PIN, HIGH);
