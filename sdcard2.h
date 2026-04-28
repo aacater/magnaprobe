@@ -5,6 +5,9 @@
 
 #include "sdcard.h"
 #include <math.h>
+#include "AD7791.h"
+
+extern float currentDepth;
 
 void MagnaSD::SDset() {
   Serial.begin(115200);
@@ -13,9 +16,9 @@ void MagnaSD::SDset() {
   pinMode(BUTTON_PIN, INPUT_PULLUP); //button setting
   pinMode(BUZZER_PIN, OUTPUT); //buzzer setting
 
-  SPI.begin(18, 19, 23); //AD7791 setup clock,MISO,MOSI
+  /*SPI.begin(18, 19, 23); //AD7791 setup clock,MISO,MOSI
   pinMode(CS_PIN, OUTPUT);
-  digitalWrite(CS_PIN, HIGH);
+  digitalWrite(CS_PIN, HIGH);*/
 
   //read and SDcard 
   while (!SD.begin(SD_CS)){
@@ -38,13 +41,13 @@ void MagnaSD::SDset() {
   createMagnaFile();
 }
 
-// create file
+// create normal file
 void MagnaSD::createMagnaFile() {
   if (!SD.exists("/Magnaprobe")) {
     SD.mkdir("/Magnaprobe");
-    Serial.println("File create");
+    //Serial.println("File create");
   }
-  Serial.println("File exist");
+  //Serial.println("File exist");
 }
 
 //write record
@@ -61,6 +64,9 @@ void MagnaSD::writeRecord(DataRecord d) {
       digitalWrite(BUZZER_PIN, LOW);
       delay(500);
       return;
+    }
+    else{
+      Serial.println(".csv created"); 
     }
     
     while (MagnaFile.size() == 0) {
@@ -121,7 +127,7 @@ bool MagnaSD::allDataMeasured(DataRecord d) {
   if (d.latitude == 0 || d.longitude == 0){
     return false;
   }
-  if (d.depth < 0) {
+  if (d.depth < 0.0) {
     return false;
   }
   if (d.angle < 0) {
@@ -158,12 +164,12 @@ void MagnaSD::record() {
        sprintf(data.timeStr, "%02d:%02d.%02d", data.hour, data.minute, data.second);
       }
       else {
-        data.year  = millis() % 10000;  // 0–9999
-        data.month = millis() % 12 + 1; // 1–12
-        data.day   = millis() % 31 + 1; // 1–31
+        data.year  = 2026;  // 0–9999
+        data.month = 4; // 1–12
+        data.day   = 27; // 1–31
 
         sprintf(data.dateStr, "%04d-%02d-%02d",  data.year, data.month, data.day);
-        //sprintf(data.timeStr, "Error");
+        //sprintf(data.timeStr, "2026-04-27");
         sprintf(data.timeStr, "**:**.**");
       }
       //GPS
@@ -171,49 +177,42 @@ void MagnaSD::record() {
        data.latitude = gps.location.lat();
        data.longitude = gps.location.lng();
       } 
-      else{
+      /*else{
         data.latitude = millis();
        data.longitude = millis();
-      }
+      }*/
       if (gps.altitude.isValid()) {
        data.altitude = gps.altitude.meters();
       }
-      else {
+      /*else {
         data.altitude = millis();
-      }
+      }*/
 
       //data.depth = readDepth();
-      data.depth = 0;//AD7791.rawToDepth(raw);
+      data.depth = currentDepth; //currentDepth = depth drag from AD991.h
       
       // need to replace to the actual measurement
-      data.temperature = -40;
-      data.angle = random(10,50)/10.0;
+      data.temperature = -40; //<- if want add temerature device to record
+      data.angle = 0; //<- change to the 
 
       data.REALdepth = data.depth*cos(data.angle);
      
-     if (!recorded && allDataMeasured(data) && digitalRead(BUTTON_PIN) == LOW){
-      writeRecord(data);
-      recorded = true; 
-      digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
-      delay(100);
+     if (allDataMeasured(data)) {
+          writeRecord(data);
+          recorded = true;
+          digitalWrite(BUZZER_PIN, LOW);
+      }
+   }
+      // if not elif, buzzer while held
+     if (digitalRead(BUTTON_PIN) == LOW) {
+        digitalWrite(BUZZER_PIN, HIGH);  // buzz while held
+      }
     } 
-
-  }
-  
- }
-  else {
-    digitalWrite(BUZZER_PIN, LOW);   // buzzer OFF
-    delay(100);
-  }
-  while (digitalRead(BUTTON_PIN) == LOW){
-      digitalWrite(BUZZER_PIN, HIGH);  // buzzer ON
-      delay(10);
-      digitalWrite(BUZZER_PIN, LOW);
-      delay(500);
-      return;
-  }
-  if (digitalRead(BUTTON_PIN) == HIGH) {
-    recorded = false;
-  }
-    
+    else {
+        digitalWrite(BUZZER_PIN, LOW);
+    }
+//if instead of while — non blocking
+    if (digitalRead(BUTTON_PIN) == HIGH) {
+      recorded = false;
+    }
 }
