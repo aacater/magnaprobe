@@ -1,6 +1,6 @@
 /*
-  sdcard2.h
-  by Ryuma Map
+  sdcard2.cpp
+  by Ryuma Mau
 */
 
 #include "sdcard.h"
