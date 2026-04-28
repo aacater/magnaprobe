@@ -1,5 +1,6 @@
 /*
   AD7791.cpp
+  by Griffin Marson
 */
 
 #include <Arduino.h>
